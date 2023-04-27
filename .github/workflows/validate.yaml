@@ -1,0 +1,53 @@
+name: good-validate-src
+
+on:
+  # Triggers the workflow on push or pull request events but only for the main branch
+  # Allows you to run this workflow manually fromf the Actions tabs
+  workflow_dispatch:
+ 
+        # A workflow run is made up of one or more jobs that can run sequentially or in parallel
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    outputs:
+      output1: ${{ steps.step1.outputs.test }}
+    steps:
+      - name: "Checkout source code"
+        uses: actions/checkout@v2
+        with:
+          fetch-depth: 0
+
+      - name: "Install SFDX"
+        run: |
+          DIR="sfdx"
+          if [ -d "$DIR" ]; then
+            rm -r sfdx
+          fi
+          wget https://developer.salesforce.com/media/salesforce-cli/sfdx-linux-amd64.tar.xz
+          mkdir sfdx
+          tar xJf sfdx-linux-amd64.tar.xz -C sfdx --strip-components 1
+          ./sfdx/install
+          sfdx update
+           
+      - name: "Authenticate Dev Hub"
+        run: |
+          DEBUG=*
+          node --trace-warnings
+          echo "${{ secrets.SFDX_DEVHUB_AUTH_URL }}" > ./authfile
+          sfdx auth:sfdxurl:store -f authfile -a devhub
+          sfdx force:org:list --verbose
+        shell: bash
+
+      - name: "Github Push"
+        if: always()
+        run: |
+          git config --global user.email "claytonboss@gmail.com"
+          git config --global user.name "clayboss"
+          git fetch
+          git pull
+          git add .
+          git add logs
+          git commit -m "validation attempt on remote"
+          git push
+          
+        shell: bash
